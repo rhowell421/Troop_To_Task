@@ -1,0 +1,81 @@
+---
+title: "Events Calendar"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+  word_document: default
+params: 
+  n: Futures
+  m: DB
+  o: 3
+  p: TRUE
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, error = TRUE, fig.width = 10, fig.asp = 0.618, fig.align = "center", dpi = 300)
+#tictoc::tic()
+source("Import.R")
+
+T2T_interval <- T2T_test7 %>%
+  left_join(Roster, by ="Name") %>%
+  filter(!is.na(Name)) %>%
+  mutate(`Start Date` = Deploy,
+         `End Date` = Redeploy) %>%
+  mutate(as.Date(`Start Date`)) %>%
+  mutate(as.Date(`End Date`)) %>%
+  filter(`End Date` >= today() - dmonths(1) & `Start Date` <= today() + dyears(1)) %>%
+  full_join(Roster) %>%
+  filter(Division %in% params$n) 
+
+T2T_po <- filter(T2T_interval, Duty == "Project Officer") %>%
+  filter(Event != "Admin")
+
+T2T_po["Name"] <- T2T_po["Event"]
+
+T2T_po["Team"] <- "0"
+
+```
+
+```{r, echo=FALSE}
+
+for (i in 0:(params$o -1)) {
+  
+ if(params$p == TRUE){
+   print(filter(T2T_interval, Team %in% params$m) %>%
+  rbind(T2T_po) %>%
+  ggplot(aes(x = as.Date(`Start Date`), y = Name, color = Event)) +
+    geom_point() +
+    geom_point(aes(x = as.Date(`End Date`))) +
+    geom_segment(aes(xend = as.Date(`End Date`), yend = Name)) +
+    geom_text(aes(label = str_wrap(paste(Event, Task), 24)), nudge_y = .4, hjust = "left", check_overlap = TRUE, color = "black") +
+    scale_x_date(position = "bottom", date_labels = str_wrap("%a %d", 2), date_breaks = "1 days", minor_breaks = NULL, sec.axis = dup_axis()) +
+    scale_y_discrete(limits = rev) +
+    coord_cartesian(xlim = c(ymd(floor_date(today() %m+% months(i), "months")), ymd(ceiling_date(today() %m+% months(i), "months")))) +
+  labs(x = format(today() %m+% months(i), "%B %Y"), title = str_glue("{paste0(params$o)} Month Calendar"), subtitle = str_glue("{paste0(params$n)} Division"), caption = str_wrap(paste("As of", format(file.mtime("T2T_Input.xlsx"), "%d %b %Y"), sep = " "))) +
+    theme_bw() +
+    facet_grid(Team ~ ., scale = "free_y", space = "free")
+   )
+
+} else {
+  
+  print(filter(T2T_interval, Team %in% params$m) %>%
+  ggplot(aes(x = as.Date(`Start Date`), y = Name, color = Event)) +
+    geom_point() +
+    geom_point(aes(x = as.Date(`End Date`))) +
+    geom_segment(aes(xend = as.Date(`End Date`), yend = Name)) +
+    geom_text(aes(label = str_wrap(paste(Event, Task), 24)), nudge_y = .4, hjust = "left", check_overlap = TRUE, color = "black") +
+    scale_x_date(position = "bottom", date_labels = str_wrap("%a %d", 2), date_breaks = "1 days", minor_breaks = NULL, sec.axis = dup_axis()) +
+    scale_y_discrete(limits = rev) +
+    coord_cartesian(xlim = c(ymd(floor_date(today() %m+% months(i), "months")), ymd(ceiling_date(today() %m+% months(i), "months")))) +
+    labs(x = format(today() %m+% months(i), "%B %Y"), title = str_glue("{paste0(params$o)} Month Calendar"), subtitle = str_glue("{paste0(params$n)} Division"), caption = str_wrap(paste("As of", format(file.mtime("T2T_Input.xlsx"), "%d %b %Y"), sep = " "))) +
+    theme_bw() +
+    facet_grid(Team ~ ., scale = "free_y")
+  )
+ }
+}
+    
+
+#tictoc::toc()
+```
+
